@@ -1,0 +1,14 @@
+- name: Ansible 101
+  hosts: node1
+  gather_facts: no
+
+  tasks:
+
+  - name: Installing AWS Python libraries
+    pip:
+      name: 
+        - boto
+        - botocore
+        - boto3
+      state: present
+      executable: pip3
