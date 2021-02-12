@@ -12,3 +12,12 @@ https://classroom.google.com/c/MjYxOTU3Njk4OTkx/a/MjYxOTU3Njk5MDQ0/details
 
 ---
 
+## Ansible 102
+
+Ansible 102 Practice upgrade and install a webserver in two servers, reboot both and check from the controller if the webserver is working.
+
+Practice:
+https://docs.google.com/document/d/1_H0YN7KopUKi9KhKGkBynY7wUMARKtW1DToL02P9vmc/edit#
+
+Assigment:
+https://classroom.google.com/c/MjYxOTU3Njk4OTkx/a/MjY0NzQwNjA5MjI0/details
