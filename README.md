@@ -21,3 +21,14 @@ https://docs.google.com/document/d/1_H0YN7KopUKi9KhKGkBynY7wUMARKtW1DToL02P9vmc/
 
 Assigment:
 https://classroom.google.com/c/MjYxOTU3Njk4OTkx/a/MjY0NzQwNjA5MjI0/details
+
+---
+
+## Ansible 103
+
+Ansible 103 Practice implement a simple loop control that create 5 users in two managed nodes with a 5s pause between each iteration.
+
+Practice:
+https://docs.google.com/document/d/1_faq_BKjex4dzkKEVK1MWFb-fDJrcJmbQvdCdONvubo/edit#
+
+Assigment:
