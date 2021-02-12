@@ -1,0 +1,21 @@
+---
+- name: All Host
+  hosts: all
+  become: true
+  gather_facts: no
+
+  tasks:
+ 
+  - name: Add Users
+    user:
+      name: "{{ item }}"
+      state: present
+      groups: "sudo"
+    loop:
+      - user1
+      - user2
+      - user3
+      - user4
+      - user5          
+    loop_control:
+      pause: 5
