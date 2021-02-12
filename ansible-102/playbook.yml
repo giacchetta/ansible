@@ -1,0 +1,36 @@
+---
+- name: All Host
+  hosts: all
+  become: true
+  gather_facts: no
+
+  tasks:
+
+  - name: Upgrade Distribution
+    apt:
+      state: present
+      upgrade: dist
+      update_cache: true
+  
+  - name: Install Packages
+    apt:
+      name:
+       - nginx
+      state: present
+
+  - name: Reboot Machines after Upgrade
+    reboot:
+
+- name: Controller Only
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+
+  - name: Check Nginx Working on Node1
+    uri:
+      url: http://192.168.254.3
+  
+  - name: Check Nginx Working on Node2
+    uri:
+      url: http://192.168.254.4
