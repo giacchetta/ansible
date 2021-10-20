@@ -1,0 +1,46 @@
+---
+- name: Prerequisities
+  gather_facts: false
+  hosts: localhost
+
+  tasks:
+
+  - name: Install Galaxy Roles
+    command: ansible-galaxy install -r requirements.yml --roles-path ./roles
+    tags:
+      - pretasks
+
+- name: Master Deployment
+  gather_facts: true
+  hosts: masters
+  become: true
+
+  tasks:
+
+  - name: Installing Docker CE
+    include_role:
+      name: ansible-elasticsearch
+    vars:
+      es_version: "7.15.1"
+      es_heap_size: "512m"
+      # es_api_basic_auth_username: elastic
+      # es_api_basic_auth_password: elastic
+      es_config:
+        cluster.name: "{{es_cluster_name}}"
+        cluster.initial_master_nodes: "{{es_cluster_initial_master_nodes}}" # Fix to bool
+          
+        bootstrap.memory_lock: "{{es_bootstrap_memory_lock}}"
+        discovery.seed_hosts: "{{es_discovery_seed_hosts}}"
+
+        # http.compression: true
+        # http.compression_level: 3
+
+        node.data: false
+        node.master: true
+        node.ingest: false
+        node.name: "{{es_cluster_initial_master_nodes}}"
+        network.host: 0.0.0.0
+
+    tags:
+      - es-master
+ 

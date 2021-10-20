@@ -1,0 +1,2 @@
+- src: git+https://github.com/elastic/ansible-elasticsearch.git
+  version: v7.15.1
