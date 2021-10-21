@@ -7,8 +7,6 @@
 
   - name: Install Galaxy Roles
     command: ansible-galaxy install -r requirements.yml --roles-path ./roles
-    tags:
-      - pretasks
 
 - name: Master Deployment
   gather_facts: true
@@ -17,30 +15,66 @@
 
   tasks:
 
-  - name: Installing Docker CE
+  - name: Installing ElasticSearch Masters Nodes
     include_role:
       name: ansible-elasticsearch
     vars:
-      es_version: "7.15.1"
+      es_version: "{{es_cluster_version}}"
       es_heap_size: "512m"
-      # es_api_basic_auth_username: elastic
-      # es_api_basic_auth_password: elastic
+      es_api_basic_auth_username: "{{es_cluster_api_basic_auth_username}}"
+      es_api_basic_auth_password: "{{es_cluster_api_basic_auth_password}}"
       es_config:
         cluster.name: "{{es_cluster_name}}"
-        cluster.initial_master_nodes: "{{es_cluster_initial_master_nodes}}" # Fix to bool
-          
+        cluster.initial_master_nodes: "{{es_cluster_initial_master_nodes}}"
         bootstrap.memory_lock: "{{es_bootstrap_memory_lock}}"
         discovery.seed_hosts: "{{es_discovery_seed_hosts}}"
-
-        # http.compression: true
-        # http.compression_level: 3
-
+        http.compression: "{{es_http_compression}}"
+        http.compression_level: "{{es_http_compression_level}}"
+        xpack.ml.enabled: "{{es_xpack_ml_enabled}}"
         node.data: false
         node.master: true
         node.ingest: false
-        node.name: "{{es_cluster_initial_master_nodes}}"
-        network.host: 0.0.0.0
+        node.name: "{{ ansible_facts['nodename'] }}"
+        network.host: "{{es_network_host}}"
+        xpack.security.transport.ssl.enabled: "{{xpack_security_transport_ssl_enabled}}"
+        xpack.security.transport.ssl.verification_mode: "{{xpack_security_transport_ssl_verification_mode}}"
+        xpack.security.transport.ssl.key: "{{xpack_security_transport_ssl_key}}/{{ ansible_facts['nodename'] }}.key"
+        xpack.security.transport.ssl.certificate: "{{xpack_security_transport_ssl_certificate}}/{{ ansible_facts['nodename'] }}.crt"
+        xpack.security.transport.ssl.certificate_authorities: "{{xpack_security_transport_ssl_certificate_authorities}}" #Pending
+        xpack.security.http.ssl.enabled: "{{xpack_security_http_ssl_enabled}}"
+        xpack.security.http.ssl.verification_mode: "{{xpack_security_http_ssl_verification_mode}}"
+        xpack.security.http.ssl.key: "{{xpack_security_http_ssl_key}}/{{ ansible_facts['nodename'] }}.key"
+        xpack.security.http.ssl.certificate: "{{xpack_security_http_ssl_certificate}}/{{ ansible_facts['nodename'] }}.crt"
+        xpack.security.http.ssl.certificate_authorities: "{{xpack_security_http_ssl_certificate_authorities}}" #Pending
 
-    tags:
-      - es-master
+
+- name: Data Deployment
+  gather_facts: true
+  hosts: data
+  become: true
+
+  tasks:
+
+  - name: Installing ElasticSearch Data Nodes
+    include_role:
+      name: ansible-elasticsearch
+    vars:
+      es_version: "{{es_cluster_version}}"
+      es_heap_size: "1024m"
+      es_api_basic_auth_username: "{{es_cluster_api_basic_auth_username}}"
+      es_api_basic_auth_password: "{{es_cluster_api_basic_auth_password}}"
+      es_config:
+        cluster.name: "{{es_cluster_name}}"
+        cluster.initial_master_nodes: "{{es_cluster_initial_master_nodes}}"
+        bootstrap.memory_lock: "{{es_bootstrap_memory_lock}}"
+        discovery.seed_hosts: "{{es_discovery_seed_hosts}}"
+        http.compression: "{{es_http_compression}}"
+        http.compression_level: "{{es_http_compression_level}}"
+        xpack.ml.enabled: "{{es_xpack_ml_enabled}}"
+        node.data: true
+        node.master: false
+        node.ingest: true
+        node.name: "{{ ansible_facts['nodename'] }}"
+        network.host: "{{es_network_host}}"
+ 
  
