@@ -1,0 +1,35 @@
+---
+- name: Create SearchGateway Directory
+  file:
+    path: /etc/searchgateway/
+    state: directory
+    mode: 0755
+
+- name: Template Configuration Files
+  template:
+    src: default.conf.j2
+    dest: /etc/searchgateway/default.conf
+    mode: 0644
+
+- name: Template Configuration Files
+  template:
+    src: logback.xml.j2
+    dest: /etc/searchgateway/logback.xml
+    mode: 0644    
+
+- name: Elasticsearch
+  community.docker.docker_container:
+    name: sgw
+    image: "opsterio/sgw:latest"
+    pull: "true"
+    ulimits:
+      - "memlock:-1:-1"
+    recreate: "yes"
+    state: "started"
+    restart_policy: "unless-stopped"
+    published_ports:
+      - "0.0.0.0:9201:9200"
+      - "0.0.0.0:9301:9300"
+    volumes:
+      - /etc/searchgateway/:/app/resources/
+

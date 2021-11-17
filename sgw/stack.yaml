@@ -1,0 +1,73 @@
+---
+- name: Prerequisities
+  gather_facts: false
+  hosts: localhost
+
+  tasks:
+
+  - name: Install Galaxy Roles
+    command: ansible-galaxy install -r requirements.yml --roles-path ./roles
+
+  - name: Install Galaxy Collections
+    command: ansible-galaxy collection install community.docker ansible.posix
+
+
+- name: Ubuntu Bundle
+  gather_facts: true
+  hosts: ubuntu
+  become: true
+
+  tasks:
+
+  - name: Installing Docker Engine
+    include_role:
+      name: asbrl-docker
+    vars:
+      asbrl_docker_install_docker: true
+      asbrl_docker_install_certificates: false
+      asbrl_docker_install_registry: false
+      asbrl_docker_install_watchtower: false
+    tags:
+      - asbrl-docker
+
+  - name: asbrl-cadvisor
+    include_role:
+      name: asbrl-cadvisor
+    tags:
+      - asbrl-cadvisor  
+
+  - name: asbrl-prometheus
+    include_role:
+      name: asbrl-prometheus
+    tags:
+      - asbrl-prometheus  
+
+  - name: Deploy ElasticSearch Node
+    include_role:
+      name: asbrl-elasticsearch
+    vars:
+      BUILD: '7.15.1'
+      HOSTNAME: 'localhost'
+      INITIAL_MASTER_NODES: ['localhost']
+      ADMIN_PASSWORD: 'elastic'
+      ES_HEAP_SIZE: '512m'
+      XPACK_SECURITY_ENABLED: 'true'
+      XPACK_MONITORING_ENABLED: 'true'
+      XPACK_MONITORING_COLLECTION_ENABLED: 'true'
+    tags:
+      - asbrl-elasticsearch
+
+  - name: Deploy Kibana
+    include_role:
+      name: asbrl-kibana
+    vars:
+      BUILD: '{{ KIBANA_BUILD }}'
+      ES_HOST: '{{ KIBANA_ES_HOST }}' 
+      XPACK_SECURITY_ENABLED: 'true'
+      ES_USERNAME: 'elastic'
+      ES_PASSWORD: '{{ ELASTICSEARCH_ADMIN_PASSWORD }}'
+    tags:
+      - asbrl-kibana
+
+  - include_tasks: ./tasks/sgw.yaml
+
