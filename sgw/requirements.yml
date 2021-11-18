@@ -1,6 +1,12 @@
-- src: git+https://github.com/moegui/asbrl-docker.git
+---
+roles:
+- src: https://github.com/moegui/asbrl-docker.git
   version: 0.4.0
-- src: git+https://github.com/moegui/asbrl-cadvisor.git
+- src: https://github.com/moegui/asbrl-cadvisor.git
   version: 0.3.1
-- src: git+http://github.com/moegui/asbrl-prometheus.git
+- src: http://github.com/moegui/asbrl-prometheus.git
   version: master
+
+collections:
+  - name: ansible.posix
+  - name: community.docker

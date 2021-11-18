@@ -1,15 +1,15 @@
 <configuration>
 <appender name="elasticsearch" class="com.opster.mclb.infrastructure.logs.ElasticSearchAppender">
     <protocol>http</protocol>
-    <host>localhost</host>
-    <port>9200</port>
+    <host>172.17.0.1</host>
+    <port>9201</port>
     <index>opster-sg</index>
     <batchSize>10</batchSize>
     <docType>doc</docType>
     <batchTimeoutInMilliseconds>5000</batchTimeoutInMilliseconds>
     <retry>3</retry>
-    <username>elastic</username>
-    <password>elastic</password>
+    {# <username>elastic</username> #}
+    {# <password>elastic</password> #}
 </appender>
 <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
   <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>

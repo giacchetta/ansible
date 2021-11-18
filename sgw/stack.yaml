@@ -6,68 +6,151 @@
   tasks:
 
   - name: Install Galaxy Roles
-    command: ansible-galaxy install -r requirements.yml --roles-path ./roles
+    ansible.builtin.command: ansible-galaxy install -r requirements.yml
+    tags:
+      - pre
 
-  - name: Install Galaxy Collections
-    command: ansible-galaxy collection install community.docker ansible.posix
-
-
-- name: Ubuntu Bundle
+- name: Ubuntu Installer
   gather_facts: true
   hosts: ubuntu
-  become: true
+  become: true  
 
   tasks:
 
-  - name: Installing Docker Engine
-    include_role:
+  - name: Installing Docker Service
+    ansible.builtin.include_role:
       name: asbrl-docker
+      apply:
+        tags:
+          - docker
     vars:
       asbrl_docker_install_docker: true
       asbrl_docker_install_certificates: false
       asbrl_docker_install_registry: false
-      asbrl_docker_install_watchtower: false
+      asbrl_docker_install_watchtower: false      
     tags:
-      - asbrl-docker
+      - docker
 
-  - name: asbrl-cadvisor
-    include_role:
+  - name: Installing cAdvisor Service
+    ansible.builtin.include_role:
       name: asbrl-cadvisor
+      apply:
+        tags:
+          - cadvisor           
     tags:
-      - asbrl-cadvisor  
+      - cadvisor  
 
-  - name: asbrl-prometheus
-    include_role:
+  - name: Installing Prometheus Service
+    ansible.builtin.include_role:
       name: asbrl-prometheus
+      apply:
+        tags:
+          - prometheus       
     tags:
-      - asbrl-prometheus  
+      - prometheus  
 
   - name: Deploy ElasticSearch Node
-    include_role:
+    ansible.builtin.include_role:
       name: asbrl-elasticsearch
+      apply:
+        tags:
+          - elasticsearch      
     vars:
       BUILD: '7.15.1'
       HOSTNAME: 'localhost'
       INITIAL_MASTER_NODES: ['localhost']
       ADMIN_PASSWORD: 'elastic'
       ES_HEAP_SIZE: '512m'
-      XPACK_SECURITY_ENABLED: 'true'
-      XPACK_MONITORING_ENABLED: 'true'
-      XPACK_MONITORING_COLLECTION_ENABLED: 'true'
+      XPACK_SECURITY_ENABLED: 'false'
+      XPACK_MONITORING_ENABLED: 'false'
+      XPACK_MONITORING_COLLECTION_ENABLED: 'false'
     tags:
-      - asbrl-elasticsearch
+      - elasticsearch
 
-  - name: Deploy Kibana
-    include_role:
+  - name: Deploy Kibana Service
+    ansible.builtin.include_role:
       name: asbrl-kibana
+      apply:
+        tags:
+          - kibana            
     vars:
-      BUILD: '{{ KIBANA_BUILD }}'
-      ES_HOST: '{{ KIBANA_ES_HOST }}' 
-      XPACK_SECURITY_ENABLED: 'true'
-      ES_USERNAME: 'elastic'
-      ES_PASSWORD: '{{ ELASTICSEARCH_ADMIN_PASSWORD }}'
+      BUILD: '7.15.1'
+      ES_HOST: 'http://172.17.0.1:9201' 
+      XPACK_SECURITY_ENABLED: 'false'
+      # ES_USERNAME: 'elastic'
+      # ES_PASSWORD: 'elastic'
     tags:
-      - asbrl-kibana
+      - kibana
 
-  - include_tasks: ./tasks/sgw.yaml
+  - name: Waiting for Kibana get ready
+    ansible.builtin.wait_for:
+      host: 10.17.2.134
+      port: 5601
+      delay: 10
+      sleep: 3
+      timeout: 300
+    tags:
+      - kibana     
 
+  - name: Import Kibana Dashboards
+    ansible.builtin.uri:
+      url: 'http://10.17.2.134:5601/api/saved_objects/_import?overwrite=true'
+      # user: your_username
+      # password: your_pass
+      method: 'POST'
+      # force_basic_auth: yes
+      status_code: 200
+      body_format: 'form-multipart'
+      remote_src: True
+      body:
+        file:
+          content: "{{ lookup('url', 'https://opster-rpms.s3.amazonaws.com/sgw/kibana-dashboard-export.ndjson', split_lines=False) }}"
+          filename: kibana-dashboard-export.ndjson
+          mime_type: application/json
+      headers:
+        kbn-xsrf: true
+    tags:
+      - kibana       
+
+
+  - name: Downloading Opster Search Gateway Grafana Dashboard
+    ansible.builtin.get_url:
+      url: 'https://opster-rpms.s3.amazonaws.com/sgw/SGW-Grafana-Dashboard.json'
+      dest: '/tmp/SGW-Grafana-Dashboard.json'
+      mode: '0440'      
+    tags:
+      - grafana
+
+  - name: Replacing with RegEx in Grafana Dashboard
+    ansible.builtin.replace:
+      path: '/tmp/SGW-Grafana-Dashboard.json'
+      regexp: '\$\{DS_PROMETHEUS\}'
+      replace: 'prometheus'
+    tags:
+      - grafana     
+
+  - name: Deploy Grafana Service
+    ansible.builtin.include_role:
+      name: asbrl-grafana
+      apply:
+        tags:
+          - grafana          
+    vars:
+      PROMETHEUS_URL: 'http://172.17.0.1:9090'
+      ADMIN_PASS: 'admin'
+      BUILD: 'latest'
+      DOCKER_PUBLISHED_PORTS: 
+        - "80:3000"  
+    tags:
+      - grafana
+
+  - name: Deploy Search Gateway Service
+    ansible.builtin.include_tasks:
+      file: tasks/sgw.yaml
+      apply:
+        tags:
+          - sgw
+    vars:
+      es_backend_url: 'http://10.17.2.1:9201'            
+    tags:
+      - sgw

@@ -17,7 +17,7 @@
     dest: /etc/searchgateway/logback.xml
     mode: 0644    
 
-- name: Elasticsearch
+- name: Search Gateway
   community.docker.docker_container:
     name: sgw
     image: "opsterio/sgw:latest"
@@ -28,8 +28,8 @@
     state: "started"
     restart_policy: "unless-stopped"
     published_ports:
-      - "0.0.0.0:9201:9200"
-      - "0.0.0.0:9301:9300"
+      - "0.0.0.0:9200:9200"
+      - "0.0.0.0:5555:5555"
     volumes:
-      - /etc/searchgateway/:/app/resources/
+      - /etc/searchgateway/:/app/resources/  
 
