@@ -110,7 +110,7 @@
     ansible.builtin.wait_for:
       host: 10.17.2.134
       port: 5601
-      delay: 20
+      delay: 30
       sleep: 3
       timeout: 300
     tags:
