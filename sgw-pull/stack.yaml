@@ -12,7 +12,7 @@
 
 - name: Ubuntu Installer
   gather_facts: true
-  hosts: ubuntu
+  hosts: all
   become: true
 
   vars_prompt:
