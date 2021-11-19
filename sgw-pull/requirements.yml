@@ -1,0 +1,21 @@
+---
+roles:
+- src: https://github.com/moegui/asbrl-docker.git
+  version: 1.0.1
+- src: https://github.com/moegui/asbrl-cadvisor.git
+  version: 1.0.1
+- src: http://github.com/moegui/asbrl-prometheus.git
+  version: 1.0.1
+- src: http://github.com/moegui/asbrl-elasticsearch.git
+  version: 1.0.2
+- src: http://github.com/moegui/asbrl-grafana.git
+  version: 1.0.1
+- src: http://github.com/moegui/asbrl-kibana.git
+  version: 1.0.1  
+- src: http://github.com/opster/opster_search_gateway.git
+  version: 0.1.0  
+
+
+collections:
+  - name: ansible.posix
+  - name: community.docker

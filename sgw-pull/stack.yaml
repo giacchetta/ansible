@@ -1,0 +1,186 @@
+---
+- name: Prerequisities
+  gather_facts: false
+  hosts: localhost
+
+  tasks:
+
+  - name: Install Galaxy Roles
+    ansible.builtin.command: ansible-galaxy install -r requirements.yml
+    tags:
+      - pre
+
+- name: Ubuntu Installer
+  gather_facts: true
+  hosts: ubuntu
+  become: true
+
+  vars_prompt:
+
+    - name: opster_mclb_port
+      prompt: "Set Opster SGW listening port"
+      private: no
+      default: 9200
+
+    - name: opster_search_gateway_build
+      prompt: "Set SGW version to install, this will update existing image"
+      private: no
+      default: "latest"
+
+    - name: opster_mclb_backend_url
+      prompt: "Your ElasticSearch backend URL"
+      private: no
+      confirm: yes
+      default: "http://localhost:9201"
+
+  vars:
+    es_version: '7.15.1'
+
+  tasks:
+
+  - name: Installing Docker Service
+    ansible.builtin.include_role:
+      name: asbrl-docker
+      apply:
+        tags:
+          - docker
+    vars:
+      asbrl_docker_install_docker: True
+      asbrl_docker_install_certificates: False
+      asbrl_docker_install_registry: False
+      asbrl_docker_install_watchtower: False      
+    tags:
+      - docker
+
+  - name: Installing cAdvisor Service
+    ansible.builtin.include_role:
+      name: asbrl-cadvisor
+      apply:
+        tags:
+          - cadvisor           
+    tags:
+      - cadvisor  
+
+  - name: Installing Prometheus Service
+    ansible.builtin.include_role:
+      name: asbrl-prometheus
+      apply:
+        tags:
+          - prometheus       
+    tags:
+      - prometheus  
+
+  - name: Deploy ElasticSearch Node
+    ansible.builtin.include_role:
+      name: asbrl-elasticsearch
+      apply:
+        tags:
+          - elasticsearch      
+    vars:
+      build: "{{ es_version }}"
+      hostname: 'localhost'
+      initial_master_nodes: ['localhost']
+      admin_password: 'elastic'
+      es_heap_size: '512m'
+      docker_published_ports:
+        - "0.0.0.0:9201:9200"
+        - "0.0.0.0:9301:9300"
+      xpack_security_enabled: 'false'
+      xpack_monitoring_enabled: 'false'
+      xpack_monitoring_collection_enabled: 'false'
+    tags:
+      - elasticsearch
+
+  - name: Deploy Kibana Service
+    ansible.builtin.include_role:
+      name: asbrl-kibana
+      apply:
+        tags:
+          - kibana            
+    vars:
+      build: "{{ es_version }}"
+      es_host: 'http://172.17.0.1:9201' 
+      xpack_security_enabled: 'false'
+      # es_username: 'elastic'
+      # es_password: 'elastic'
+    tags:
+      - kibana
+
+  - name: Waiting for Kibana get ready
+    ansible.builtin.wait_for:
+      host: 10.17.2.134
+      port: 5601
+      delay: 20
+      sleep: 3
+      timeout: 300
+    tags:
+      - kibana     
+
+  - name: Import Kibana Dashboards
+    ansible.builtin.uri:
+      url: 'http://10.17.2.134:5601/api/saved_objects/_import?overwrite=true'
+      # user: your_username
+      # password: your_pass
+      method: 'POST'
+      # force_basic_auth: yes
+      status_code: 200
+      body_format: 'form-multipart'
+      remote_src: True
+      body:
+        file:
+          content: "{{ lookup('url', 'https://opster-rpms.s3.amazonaws.com/sgw/kibana-dashboard-export.ndjson', split_lines=False) }}"
+          filename: kibana-dashboard-export.ndjson
+          mime_type: application/json
+      headers:
+        kbn-xsrf: true
+    tags:
+      - kibana 
+
+
+  - name: Downloading Opster Search Gateway Grafana Dashboard
+    ansible.builtin.get_url:
+      url: 'https://opster-rpms.s3.amazonaws.com/sgw/SGW-Grafana-Dashboard.json'
+      dest: '/tmp/SGW-Grafana-Dashboard.json'
+      mode: '0440'      
+    tags:
+      - grafana
+
+  - name: Replacing with RegEx in Grafana Dashboard
+    ansible.builtin.replace:
+      path: '/tmp/SGW-Grafana-Dashboard.json'
+      regexp: '\$\{DS_PROMETHEUS\}'
+      replace: 'prometheus'
+    tags:
+      - grafana     
+
+  - name: Deploy Grafana Service
+    ansible.builtin.include_role:
+      name: asbrl-grafana
+      apply:
+        tags:
+          - grafana          
+    vars:
+      prometheus_url: 'http://172.17.0.1:9090'
+      admin_pass: 'admin'
+      build: 'latest'
+      import_dashboards_path: '/tmp'
+      import_dashboards_file: 'SGW-Grafana-Dashboard.json'
+      docker_published_ports: 
+        - "80:3000"  
+    tags:
+      - grafana
+
+
+  - name: Deploy Seach Gateway Service
+    ansible.builtin.include_role:
+      name: opster_search_gateway
+      apply:
+        tags:
+          - sgw          
+    vars:
+      docker_build: "{{ opster_search_gateway_build }}"
+      logger_protocol: "http"
+      logger_host: "172.17.0.1"
+      logger_port: 9201
+    tags:
+      - sgw
