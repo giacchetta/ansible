@@ -33,6 +33,10 @@
   #     confirm: yes
   #     default: "http://localhost:9201"
 
+  vars:
+    docker_network_gw: '172.17.0.1'
+    es_version: '7.15.1'
+
   tasks:
 
   - name: Installing Docker Service
