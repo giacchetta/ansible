@@ -12,29 +12,26 @@
 
 - name: Ubuntu Installer
   gather_facts: true
-  hosts: localhost
+  hosts: ubuntu
   become: true
 
-  vars_prompt:
+  # vars_prompt:
 
-    - name: opster_mclb_port
-      prompt: "Set Opster SGW listening port"
-      private: no
-      default: 9200
+  #   - name: opster_mclb_port
+  #     prompt: "Set Opster SGW listening port"
+  #     private: no
+  #     default: 9200
 
-    - name: opster_search_gateway_build
-      prompt: "Set SGW version to install, this will update existing image"
-      private: no
-      default: "latest"
+  #   - name: opster_search_gateway_build
+  #     prompt: "Set SGW version to install, this will update existing image"
+  #     private: no
+  #     default: "latest"
 
-    - name: opster_mclb_backend_url
-      prompt: "Your ElasticSearch backend URL"
-      private: no
-      confirm: yes
-      default: "http://localhost:9201"
-
-  vars:
-    es_version: '7.15.1'
+  #   - name: opster_mclb_backend_url
+  #     prompt: "Your ElasticSearch backend URL"
+  #     private: no
+  #     confirm: yes
+  #     default: "http://localhost:9201"
 
   tasks:
 
@@ -99,26 +96,28 @@
           - kibana            
     vars:
       build: "{{ es_version }}"
-      es_host: 'http://172.17.0.1:9201' 
+      es_host: 'http://{{ docker_network_gw }}:9201' 
       xpack_security_enabled: 'false'
       # es_username: 'elastic'
       # es_password: 'elastic'
     tags:
       - kibana
 
-  - name: Waiting for Kibana get ready
-    ansible.builtin.wait_for:
-      host: 10.17.2.134
-      port: 5601
-      delay: 30
-      sleep: 3
-      timeout: 300
+  - name: Waiting for Kibana API get ready
+    uri:
+      url: "http://{{ docker_network_gw }}:5601/api/status"
+      follow_redirects: none
+      method: GET
+    register: _result
+    until: _result.status == 200
+    retries: 60
+    delay: 5
     tags:
       - kibana     
 
   - name: Import Kibana Dashboards
     ansible.builtin.uri:
-      url: 'http://10.17.2.134:5601/api/saved_objects/_import?overwrite=true'
+      url: 'http://{{ docker_network_gw }}:5601/api/saved_objects/_import?overwrite=true'
       # user: your_username
       # password: your_pass
       method: 'POST'
@@ -160,7 +159,7 @@
         tags:
           - grafana          
     vars:
-      prometheus_url: 'http://172.17.0.1:9090'
+      prometheus_url: 'http://{{ docker_network_gw }}:9090'
       admin_pass: 'admin'
       build: 'latest'
       import_dashboards_path: '/tmp'
@@ -180,7 +179,7 @@
     vars:
       docker_build: "{{ opster_search_gateway_build }}"
       logger_protocol: "http"
-      logger_host: "172.17.0.1"
+      logger_host: "{{ docker_network_gw }}"
       logger_port: 9201
     tags:
       - sgw
