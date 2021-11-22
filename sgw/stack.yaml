@@ -15,6 +15,31 @@
   hosts: ubuntu
   become: true  
 
+  # vars_prompt:
+
+  #   - name: opster_mclb_port
+  #     prompt: "Set Opster SGW listening port"
+  #     private: no
+  #     default: 9200
+
+  #   - name: opster_search_gateway_build
+  #     prompt: "Set SGW version to install, this will update existing image"
+  #     private: no
+  #     default: "latest"
+
+  #   - name: opster_mclb_backend_url
+  #     prompt: "Your ElasticSearch backend URL"
+  #     private: no
+  #     confirm: yes
+  #     default: "http://localhost:9201"  
+
+  vars:
+    docker_network_gw: '172.17.0.1'
+    es_version: '7.15.1'
+    opster_mclb_port: 9200
+    opster_search_gateway_build: 'latest'
+    opster_mclb_backend_url: 'http://localhost:9201'
+
   tasks:
 
   - name: Installing Docker Service
@@ -24,10 +49,10 @@
         tags:
           - docker
     vars:
-      asbrl_docker_install_docker: true
-      asbrl_docker_install_certificates: false
-      asbrl_docker_install_registry: false
-      asbrl_docker_install_watchtower: false      
+      asbrl_docker_install_docker: True
+      asbrl_docker_install_certificates: False
+      asbrl_docker_install_registry: False
+      asbrl_docker_install_watchtower: False      
     tags:
       - docker
 
@@ -56,14 +81,17 @@
         tags:
           - elasticsearch      
     vars:
-      BUILD: '7.15.1'
-      HOSTNAME: 'localhost'
-      INITIAL_MASTER_NODES: ['localhost']
-      ADMIN_PASSWORD: 'elastic'
-      ES_HEAP_SIZE: '512m'
-      XPACK_SECURITY_ENABLED: 'false'
-      XPACK_MONITORING_ENABLED: 'false'
-      XPACK_MONITORING_COLLECTION_ENABLED: 'false'
+      build: "{{ es_version }}"
+      hostname: 'localhost'
+      initial_master_nodes: ['localhost']
+      admin_password: 'elastic'
+      es_heap_size: '512m'
+      docker_published_ports:
+        - "0.0.0.0:9201:9200"
+        - "0.0.0.0:9301:9300"
+      xpack_security_enabled: 'false'
+      xpack_monitoring_enabled: 'false'
+      xpack_monitoring_collection_enabled: 'false'
     tags:
       - elasticsearch
 
@@ -74,27 +102,29 @@
         tags:
           - kibana            
     vars:
-      BUILD: '7.15.1'
-      ES_HOST: 'http://172.17.0.1:9201' 
-      XPACK_SECURITY_ENABLED: 'false'
-      # ES_USERNAME: 'elastic'
-      # ES_PASSWORD: 'elastic'
+      build: "{{ es_version }}"
+      es_host: 'http://{{ docker_network_gw }}:9201' 
+      xpack_security_enabled: 'false'
+      # es_username: 'elastic'
+      # es_password: 'elastic'
     tags:
       - kibana
 
-  - name: Waiting for Kibana get ready
-    ansible.builtin.wait_for:
-      host: 10.17.2.134
-      port: 5601
-      delay: 10
-      sleep: 3
-      timeout: 300
+  - name: Waiting for Kibana API get ready
+    uri:
+      url: "http://{{ docker_network_gw }}:5601/api/status"
+      follow_redirects: none
+      method: GET
+    register: _result
+    until: _result.status == 200
+    retries: 60
+    delay: 5
     tags:
       - kibana     
 
   - name: Import Kibana Dashboards
     ansible.builtin.uri:
-      url: 'http://10.17.2.134:5601/api/saved_objects/_import?overwrite=true'
+      url: 'http://{{ docker_network_gw }}:5601/api/saved_objects/_import?overwrite=true'
       # user: your_username
       # password: your_pass
       method: 'POST'
@@ -110,7 +140,7 @@
       headers:
         kbn-xsrf: true
     tags:
-      - kibana       
+      - kibana 
 
 
   - name: Downloading Opster Search Gateway Grafana Dashboard
@@ -136,21 +166,27 @@
         tags:
           - grafana          
     vars:
-      PROMETHEUS_URL: 'http://172.17.0.1:9090'
-      ADMIN_PASS: 'admin'
-      BUILD: 'latest'
-      DOCKER_PUBLISHED_PORTS: 
+      prometheus_url: 'http://{{ docker_network_gw }}:9090'
+      admin_pass: 'admin'
+      build: 'latest'
+      import_dashboards_path: '/tmp'
+      import_dashboards_file: 'SGW-Grafana-Dashboard.json'
+      docker_published_ports: 
         - "80:3000"  
     tags:
       - grafana
 
-  - name: Deploy Search Gateway Service
-    ansible.builtin.include_tasks:
-      file: tasks/sgw.yaml
+
+  - name: Deploy Seach Gateway Service
+    ansible.builtin.include_role:
+      name: opster_search_gateway
       apply:
         tags:
-          - sgw
+          - sgw          
     vars:
-      es_backend_url: 'http://10.17.2.1:9201'            
+      docker_build: "{{ opster_search_gateway_build }}"
+      logger_protocol: "http"
+      logger_host: "{{ docker_network_gw }}"
+      logger_port: 9201
     tags:
       - sgw
