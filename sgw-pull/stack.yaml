@@ -36,6 +36,9 @@
   vars:
     docker_network_gw: '172.17.0.1'
     es_version: '7.15.1'
+    opster_mclb_port: 9200
+    opster_search_gateway_build: 'latest'
+    opster_mclb_backend_url: 'http://localhost:9201'
 
   tasks:
 
