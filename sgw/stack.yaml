@@ -184,9 +184,14 @@
         tags:
           - sgw          
     vars:
-      docker_build: "{{ opster_search_gateway_build }}"
-      logger_protocol: "http"
-      logger_host: "{{ docker_network_gw }}"
-      logger_port: 9201
+      deploy_using: 'docker'
+
+      opster_sgw_logger_url:
+        protocol: "http"
+        host: "{{ docker_network_gw }}"
+        port: 9201
+      opster_sgw_backends:
+        - url: 'http://es-1-onion.giacchetta.net:9200'
+          default: 'true'
     tags:
       - sgw
