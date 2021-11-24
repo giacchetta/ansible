@@ -12,11 +12,11 @@
 
   tasks:
 
-  - name: Install Galaxy Roles
-    become: False
-    ansible.builtin.command: ansible-galaxy install -r requirements.yml
-    tags:
-      - pre
+  # - name: Install Galaxy Roles
+    # become: False
+    # ansible.builtin.command: ansible-galaxy install -r requirements.yml
+    # tags:
+      # - pre
 
   - name: Installing Docker Service
     ansible.builtin.include_role:

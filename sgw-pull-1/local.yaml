@@ -1,0 +1,12 @@
+---
+- name: Ubuntu Installer
+  gather_facts: true
+  hosts: localhost
+  become: False
+
+  tasks:
+
+  - name: Install Galaxy Roles
+    ansible.builtin.command: ansible-galaxy install -r requirements.yml
+    tags:
+      - pre
