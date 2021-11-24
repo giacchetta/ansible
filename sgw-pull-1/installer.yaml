@@ -6,7 +6,6 @@
 
   vars:
     docker_network_gw: '172.17.0.1'
-    es_version: '7.15.1'
     opster_assets_url: 'https://opster-rpms.s3.amazonaws.com/sgw'
     opster_mclb_grafana_dashboard: 'SGW-Grafana-Dashboard.json'
     opster_mclb_kibana_dashboard : 'kibana-dashboard-export.ndjson'
@@ -158,13 +157,9 @@
         tags:
           - sgw          
     vars:
-      deploy_using: 'docker'
       opster_sgw_logger_url:
         protocol: "http"
         host: "{{ docker_network_gw }}"
         port: 9201
-      opster_sgw_backends:
-        - url: 'http://es-1-onion.giacchetta.net:9200'
-          default: 'true'
     tags:
       - sgw
