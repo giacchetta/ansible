@@ -1,12 +1,20 @@
 ---
-- name: Ubuntu Installer
-  gather_facts: true
+- name: Installing Prerequisites
+  gather_facts: False
   hosts: localhost
   become: False
 
   tasks:
 
-  - name: Install Galaxy Roles
-    ansible.builtin.command: ansible-galaxy install -r requirements.yml
+  - name: Galaxy Collections
+    ansible.builtin.command: ansible-galaxy collection install -U -r requirements.yml
     tags:
       - pre
+
+  - name: Galaxy Roles
+    ansible.builtin.command: ansible-galaxy role install -f -r requirements.yml
+    tags:
+      - pre
+
+- name: Include the Installer
+  import_playbook: installer.yaml
