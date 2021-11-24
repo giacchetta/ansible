@@ -2,7 +2,7 @@
 - name: Ubuntu Installer
   gather_facts: true
   hosts: localhost
-  become: true
+  become: True
 
   vars:
     docker_network_gw: '172.17.0.1'
@@ -13,9 +13,10 @@
   tasks:
 
   - name: Install Galaxy Roles
+    become: False
     ansible.builtin.command: ansible-galaxy install -r requirements.yml
     tags:
-      - pre  
+      - pre
 
   - name: Installing Docker Service
     ansible.builtin.include_role:
