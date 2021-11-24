@@ -1,6 +1,6 @@
 ---
 - name: Ubuntu Installer
-  gather_facts: true
+  gather_facts: True
   hosts: localhost
   become: True
 
