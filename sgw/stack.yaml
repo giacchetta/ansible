@@ -1,44 +1,29 @@
 ---
-- name: Prerequisities
-  gather_facts: false
+- name: Installing Prerequisites
+  gather_facts: False
   hosts: localhost
+  become: False
 
   tasks:
 
-  - name: Install Galaxy Roles
-    ansible.builtin.command: ansible-galaxy install -r requirements.yml
+  - name: Galaxy Collections
+    ansible.builtin.command: ansible-galaxy collection install -U -r requirements.yml
     tags:
       - pre
 
 - name: Ubuntu Installer
   gather_facts: true
   hosts: ubuntu
-  become: true  
-
-  # vars_prompt:
-
-  #   - name: opster_mclb_port
-  #     prompt: "Set Opster SGW listening port"
-  #     private: no
-  #     default: 9200
-
-  #   - name: opster_search_gateway_build
-  #     prompt: "Set SGW version to install, this will update existing image"
-  #     private: no
-  #     default: "latest"
-
-  #   - name: opster_mclb_backend_url
-  #     prompt: "Your ElasticSearch backend URL"
-  #     private: no
-  #     confirm: yes
-  #     default: "http://localhost:9201"  
+  become: True
 
   vars:
     docker_network_gw: '172.17.0.1'
+    opster_assets_url: 'https://opster-rpms.s3.amazonaws.com/sgw'
+    opster_mclb_grafana_dashboard: 'SGW-Grafana-Dashboard.json'
+    opster_mclb_kibana_dashboard : 'kibana-dashboard-export.ndjson'
+
     es_version: '7.15.1'
-    opster_mclb_port: 9200
-    opster_search_gateway_build: 'latest'
-    opster_mclb_backend_url: 'http://localhost:9201'
+    deploy_using: 'docker'  
 
   tasks:
 
@@ -105,8 +90,6 @@
       build: "{{ es_version }}"
       es_host: 'http://{{ docker_network_gw }}:9201' 
       xpack_security_enabled: 'false'
-      # es_username: 'elastic'
-      # es_password: 'elastic'
     tags:
       - kibana
 
@@ -125,35 +108,31 @@
   - name: Import Kibana Dashboards
     ansible.builtin.uri:
       url: 'http://{{ docker_network_gw }}:5601/api/saved_objects/_import?overwrite=true'
-      # user: your_username
-      # password: your_pass
       method: 'POST'
-      # force_basic_auth: yes
       status_code: 200
       body_format: 'form-multipart'
       remote_src: True
       body:
         file:
-          content: "{{ lookup('url', 'https://opster-rpms.s3.amazonaws.com/sgw/kibana-dashboard-export.ndjson', split_lines=False) }}"
-          filename: kibana-dashboard-export.ndjson
+          content: "{{ lookup('url', '{{ opster_assets_url }}/{{ opster_mclb_kibana_dashboard }}', split_lines=False) }}"
+          filename: "{{ opster_mclb_kibana_dashboard }}"
           mime_type: application/json
       headers:
         kbn-xsrf: true
     tags:
       - kibana 
 
-
   - name: Downloading Opster Search Gateway Grafana Dashboard
     ansible.builtin.get_url:
-      url: 'https://opster-rpms.s3.amazonaws.com/sgw/SGW-Grafana-Dashboard.json'
-      dest: '/tmp/SGW-Grafana-Dashboard.json'
+      url: '{{ opster_assets_url }}/{{ opster_mclb_grafana_dashboard }}'
+      dest: '/tmp/{{ opster_mclb_grafana_dashboard }}'
       mode: '0440'      
     tags:
       - grafana
 
   - name: Replacing with RegEx in Grafana Dashboard
     ansible.builtin.replace:
-      path: '/tmp/SGW-Grafana-Dashboard.json'
+      path: '/tmp/{{ opster_mclb_grafana_dashboard }}'
       regexp: '\$\{DS_PROMETHEUS\}'
       replace: 'prometheus'
     tags:
@@ -170,12 +149,11 @@
       admin_pass: 'admin'
       build: 'latest'
       import_dashboards_path: '/tmp'
-      import_dashboards_file: 'SGW-Grafana-Dashboard.json'
+      import_dashboards_file: '{{ opster_mclb_grafana_dashboard }}'
       docker_published_ports: 
         - "80:3000"  
     tags:
       - grafana
-
 
   - name: Deploy Seach Gateway Service
     ansible.builtin.include_role:
@@ -184,14 +162,20 @@
         tags:
           - sgw          
     vars:
-      deploy_using: 'docker'
-
       opster_sgw_logger_url:
         protocol: "http"
         host: "{{ docker_network_gw }}"
         port: 9201
+
+      # opster_sgw_sslserverloader:
+      #   type: 'files'
+      #   certFileName: ''
+      #   privateKeyFileName: ''
+
       opster_sgw_backends:
-        - url: 'http://es-1-onion.giacchetta.net:9200'
+        - url: 'https://172.16.239.2:9200'
           default: 'true'
+          username: 'elastic'
+          password: 'f3X7FO4AKwXOjhv51O2A'
     tags:
       - sgw
