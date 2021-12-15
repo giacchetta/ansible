@@ -2,7 +2,7 @@
 - name: Installing Prerequisites
   gather_facts: False
   hosts: localhost
-  become: False
+  become: False 
 
   tasks:
 
@@ -27,6 +27,7 @@
 
   tasks:
 
+          
   - name: Installing Docker Service
     ansible.builtin.include_role:
       name: asbrl-docker
@@ -43,7 +44,7 @@
 
   - name: Installing cAdvisor Service
     ansible.builtin.include_role:
-      name: asbrl-cadvisor
+      NAME: asbrl-cadvisor
       apply:
         tags:
           - cadvisor           
@@ -67,13 +68,12 @@
           - elasticsearch      
     vars:
       build: "{{ es_version }}"
-      hostname: 'localhost'
-      initial_master_nodes: ['localhost']
-      admin_password: 'elastic'
-      es_heap_size: '512m'
+      cluster_name: 'sgw-logger'
+      hostname: "{{ cluster_name }}"
+      initial_master_nodes: "['{{cluster_name}}']"
+      es_heap_size: "256m"
       docker_published_ports:
-        - "0.0.0.0:9201:9200"
-        - "0.0.0.0:9301:9300"
+        - "9201:9200"
       xpack_security_enabled: 'false'
       xpack_monitoring_enabled: 'false'
       xpack_monitoring_collection_enabled: 'false'
@@ -162,6 +162,9 @@
         tags:
           - sgw          
     vars:
+      # docker_image: 'docker.io/opsterio/sgw'
+      # docker_build: 'latest'
+
       opster_sgw_logger_url:
         protocol: "http"
         host: "{{ docker_network_gw }}"
@@ -173,9 +176,17 @@
       #   privateKeyFileName: ''
 
       opster_sgw_backends:
-        - url: 'https://172.16.239.2:9200'
+        - url: 'https://10.11.1.163:49169'
           default: 'true'
           username: 'elastic'
-          password: 'f3X7FO4AKwXOjhv51O2A'
+          password: 'w9J2huiGccIW6bXp2o5g'
+        - url: 'https://10.11.1.163:49170'
+          default: 'false'
+          username: 'elastic'
+          password: 'w9J2huiGccIW6bXp2o5g'
+        - url: 'https://10.11.1.163:49171'
+          default: 'false'
+          username: 'elastic'
+          password: 'w9J2huiGccIW6bXp2o5g'
     tags:
       - sgw
