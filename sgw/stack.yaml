@@ -44,7 +44,7 @@
 
   - name: Installing cAdvisor Service
     ansible.builtin.include_role:
-      NAME: asbrl-cadvisor
+      name: asbrl-cadvisor
       apply:
         tags:
           - cadvisor           
