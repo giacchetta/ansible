@@ -72,9 +72,10 @@
       hostname: "{{ cluster_name }}"
       initial_master_nodes: "['{{cluster_name}}']"
       es_heap_size: "256m"
+      admin_password: "my_secret"
       docker_published_ports:
         - "9201:9200"
-      xpack_security_enabled: 'false'
+      xpack_security_enabled: 'true'
       xpack_monitoring_enabled: 'false'
       xpack_monitoring_collection_enabled: 'false'
     tags:
@@ -89,7 +90,9 @@
     vars:
       build: "{{ es_version }}"
       es_host: 'http://{{ docker_network_gw }}:9201' 
-      xpack_security_enabled: 'false'
+      xpack_security_enabled: 'true'
+      es_username: "elastic"
+      es_password: "my_secret"
     tags:
       - kibana
 
@@ -98,6 +101,9 @@
       url: "http://{{ docker_network_gw }}:5601/api/status"
       follow_redirects: none
       method: GET
+      force_basic_auth: yes
+      user: "elastic"
+      password: "my_secret"
     register: _result
     until: _result.status == 200
     retries: 60
@@ -109,6 +115,9 @@
     ansible.builtin.uri:
       url: 'http://{{ docker_network_gw }}:5601/api/saved_objects/_import?overwrite=true'
       method: 'POST'
+      force_basic_auth: yes
+      user: "elastic"
+      password: "my_secret"
       status_code: 200
       body_format: 'form-multipart'
       remote_src: True
@@ -146,8 +155,10 @@
           - grafana          
     vars:
       prometheus_url: 'http://{{ docker_network_gw }}:9090'
-      admin_pass: 'admin'
       build: 'latest'
+      admin_pass: 'grafanus' 
+      enable_auth_anonymous:
+        enabled: true
       import_dashboards_path: '/tmp'
       import_dashboards_file: '{{ opster_mclb_grafana_dashboard }}'
       docker_published_ports: 
@@ -162,29 +173,32 @@
         tags:
           - sgw          
     vars:
-      # docker_image: 'docker.io/opsterio/sgw'
-      # docker_build: 'latest'
-
       opster_sgw_logger_url:
         protocol: "http"
         host: "{{ docker_network_gw }}"
         port: 9201
 
-      # opster_sgw_sslserverloader:
-      #   type: 'files'
-      #   certFileName: ''
-      #   privateKeyFileName: ''
+      opster_sgw_logger:
+        index: "opster-sg"
+        batch_size: 10
+        doc_type: "doc"
+        batch_timeout: 5000
+        retry: 3
+        auth:
+          basic: true
+          username: "elastic"
+          password: "my_secret"
 
       opster_sgw_backends:
-        - url: 'https://10.11.1.163:49169'
+        - url: 'https://10.11.1.163:49175'
           default: 'true'
           username: 'elastic'
           password: 'w9J2huiGccIW6bXp2o5g'
-        - url: 'https://10.11.1.163:49170'
+        - url: 'https://10.11.1.163:49176'
           default: 'false'
           username: 'elastic'
           password: 'w9J2huiGccIW6bXp2o5g'
-        - url: 'https://10.11.1.163:49171'
+        - url: 'https://10.11.1.163:49177'
           default: 'false'
           username: 'elastic'
           password: 'w9J2huiGccIW6bXp2o5g'
