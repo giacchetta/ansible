@@ -6,7 +6,23 @@
 
   vars:
     es_version: '7.16.3'
-    cluster_name: 'es6815a'
+    cluster_name: "{{ ansible_facts['nodename'] }}"
+    es_heap_size: "512m"
+    admin_password: "Woegh6"
+    initial_master_nodes: "['{{cluster_name}}-1']"
+    xpack_security_enabled: "true"
+    xpack_security_transport_ssl_enabled: "true"
+    xpack_security_transport_ssl_verification_mode: "certificate"
+    xpack_security_transport_ssl_key: "nodes.key"
+    xpack_security_transport_ssl_certificate: "nodes.crt"
+    xpack_security_transport_ssl_certificate_authorities: "ca.crt"
+    xpack_security_http_ssl_enabled: "true"
+    xpack_security_http_ssl_verification_mode: "certificate"
+    xpack_security_http_ssl_key: "client.key"
+    xpack_security_http_ssl_certificate: "client.crt"
+    xpack_security_http_ssl_certificate_authorities: "ca.crt"
+    xpack_monitoring_enabled: 'false'
+    xpack_monitoring_collection_enabled: 'false'
 
   tasks:
           
@@ -24,6 +40,19 @@
     tags:
       - docker
 
+
+  - name: "ElasticSearch Docker Network"
+    community.docker.docker_network:
+      name: elasticsearch
+      enable_ipv6: false
+      driver: "bridge"
+      ipam_driver: "default"
+      ipam_config:
+        - subnet: 172.16.239.0/24
+          gateway: 172.16.239.1
+    tags:
+      - elasticsearch
+
   - name: "Deploy ElasticSearch Node 1"
     ansible.builtin.include_role:
       name: asbrl-elasticsearch
@@ -34,14 +63,9 @@
       build: "{{ es_version }}"
       container_name: "{{ cluster_name }}-1"
       hostname: "{{ cluster_name }}-1"
-      initial_master_nodes: "['{{cluster_name}}-1']"
-      es_heap_size: "256m"
-      admin_password: "my_secret"
+      discovery_service: "['{{cluster_name}}-2', '{{cluster_name}}-3']"
       docker_published_ports:
         - "9200:9200"
-      xpack_security_enabled: 'true'
-      xpack_monitoring_enabled: 'false'
-      xpack_monitoring_collection_enabled: 'false'
     tags:
       - elasticsearch
 
@@ -55,14 +79,9 @@
       build: "{{ es_version }}"
       container_name: "{{ cluster_name }}-2"
       hostname: "{{ cluster_name }}-2"
-      initial_master_nodes: "['{{cluster_name}}-1']"
-      es_heap_size: "256m"
-      admin_password: "my_secret"
+      discovery_service: "['{{cluster_name}}-1', '{{cluster_name}}-3']"
       docker_published_ports:
         - "9201:9200"
-      xpack_security_enabled: 'true'
-      xpack_monitoring_enabled: 'false'
-      xpack_monitoring_collection_enabled: 'false'
     tags:
       - elasticsearch
 
@@ -76,13 +95,8 @@
       build: "{{ es_version }}"
       container_name: "{{ cluster_name }}-3"
       hostname: "{{ cluster_name }}-3"
-      initial_master_nodes: "['{{cluster_name}}-1']"
-      es_heap_size: "256m"
-      admin_password: "my_secret"
+      discovery_service: "['{{cluster_name}}-1', '{{cluster_name}}-2']"
       docker_published_ports:
         - "9202:9200"
-      xpack_security_enabled: 'true'
-      xpack_monitoring_enabled: 'false'
-      xpack_monitoring_collection_enabled: 'false'
     tags:
       - elasticsearch
