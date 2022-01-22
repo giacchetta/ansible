@@ -3,18 +3,11 @@
   gather_facts: true
   hosts: mclb 
   become: True
-
+  
   vars:
-    docker_network_gw: '172.17.0.1'
-    opster_assets_url: 'https://opster-rpms.s3.amazonaws.com/sgw'
-    opster_mclb_grafana_dashboard: 'SGW-Grafana-Dashboard.json'
-    opster_mclb_kibana_dashboard : 'kibana-dashboard-export.ndjson'
-
-    es_version: '7.15.1'
-    deploy_using: 'docker'  
+    network_name: mclb
 
   tasks:
-
           
   - name: Installing Docker Service
     ansible.builtin.include_role:
@@ -30,31 +23,70 @@
     tags:
       - docker
 
-  - name: Deploy Seach Gateway Service
+  - name: ElasticSearch Docker Network
+    community.docker.docker_network:
+      name: "{{ network_name }}"
+      enable_ipv6: false
+      driver: bridge
+      ipam_driver: default
+      ipam_config:
+        - subnet: 172.16.238.0/24
+          gateway: 172.16.238.1
+    tags:
+      - docker 
+
+  
+  - name: Installing Kafka Service
     ansible.builtin.include_role:
-      name: opster_search_gateway
+      name: asbrl_kafka
       apply:
         tags:
-          - sgw          
+          - kafka
     vars:
+      docker_network_name: "{{ network_name }}" 
+    tags:
+      - kafka
+
+  - name: Deploy MCLB Service
+    ansible.builtin.include_role:
+      name: opster_mclb_role
+      apply:
+        tags:
+          - mclb
+    vars:
+      deploy_using: 'docker'
+      docker_network_name: "{{ network_name }}" 
+      
       opster_mclb_errorHandling:
         kafka:
           bootstrapServers: "kafka:9092"
           groupId: "mclb"
           topic: "mclb-"
 
-      opster_sgw_backends:
-        - url: 'https://172.31.27.79:9200'
+      opster_mclb_backends:
+        - url: 'https://172.31.6.50:9200'
           default: 'true'
           username: 'elastic'
           password: 'Woegh6'
-        - url: 'https://172.31.27.79:9201'
+        - url: 'https://172.31.6.50:9201'
           default: 'false'
           username: 'elastic'
           password: 'Woegh6'
-        - url: 'https://172.31.27.79:9202'
+        - url: 'https://172.31.6.50:9202'
+          default: 'false'
+          username: 'elastic'
+          password: 'Woegh6'
+        - url: 'https://172.31.0.108:9200'
+          default: 'false'
+          username: 'elastic'
+          password: 'Woegh6'
+        - url: 'https://172.31.0.108:9201'
+          default: 'false'
+          username: 'elastic'
+          password: 'Woegh6'
+        - url: 'https://172.31.0.108:9202'
           default: 'false'
           username: 'elastic'
           password: 'Woegh6'
     tags:
-      - sgw
+      - mclb

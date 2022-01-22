@@ -2,6 +2,7 @@
 - name: Elastic Installer
   gather_facts: true
   hosts: elastic
+  strategy: free
   become: True
 
   vars:
@@ -26,7 +27,7 @@
 
   tasks:
           
-  - name: Installing Docker Service
+  - name: "Installing Docker Service"
     ansible.builtin.include_role:
       name: asbrl-docker
       apply:
