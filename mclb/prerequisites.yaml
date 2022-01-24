@@ -1,0 +1,13 @@
+---
+- name: Installing Prerequisites
+  gather_facts: False
+  hosts: localhost
+  become: False 
+
+  tasks:
+
+  - name: Galaxy Collections
+    ansible.builtin.command: ansible-galaxy collection install -U -r requirements.yml
+    tags:
+      - pre
+

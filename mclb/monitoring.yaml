@@ -44,7 +44,24 @@
         tags:                                       
           - prometheus
     vars:
-        docker_network_name: "{{ network_name }}" # Enable  
+      docker_networks:
+        - name: "{{ network_name }}"
+          aliases:
+            - "{{ container_name }}"
+      scrape_configs:
+        - job_name: prometheus
+          static_configs:
+            - targets: ['localhost:9090']
+        - job_name: mclb
+          honor_timestamps: true
+          scrape_interval: 15s
+          scrape_timeout: 10s
+          metrics_path: /metrics
+          scheme: http
+          static_configs:
+          - targets:
+            - 172.31.4.210:5555
+            - 172.31.14.203:5555
     tags:                                           
       - prometheus
 
@@ -71,8 +88,11 @@
         tags:
           - grafana
     vars:
-      docker_network_name: "{{ network_name }}" # Enable
-      prometheus_url: 'http://172.17.0.1:9090'
+      docker_networks:
+        - name: "{{ network_name }}"
+          aliases:
+            - "{{ container_name }}"
+      prometheus_url: 'http://prometheus:9090'
       build: 'latest'
       admin_pass: 'grafanus'
       enable_auth_anonymous:

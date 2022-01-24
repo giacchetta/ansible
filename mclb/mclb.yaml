@@ -56,6 +56,9 @@
     vars:
       deploy_using: 'docker'
       docker_network_name: "{{ network_name }}" 
+      docker_published_ports:
+        - "0.0.0.0:8200:8200"
+        - "0.0.0.0:5555:5555"
       
       opster_mclb_errorHandling:
         kafka:
@@ -63,28 +66,33 @@
           groupId: "mclb"
           topic: "mclb-"
 
+      opster_mclb_sslserverloader:
+        type: 'files'
+        certFileName: '/app/resources/certificates/client.crt'
+        privateKeyFileName: '/app/resources/certificates/client.key'
+
       opster_mclb_backends:
-        - url: 'https://172.31.6.50:9200'
+        - url: 'https://172.31.13.209:9200'
           default: 'true'
           username: 'elastic'
           password: 'Woegh6'
-        - url: 'https://172.31.6.50:9201'
+        - url: 'https://172.31.13.209:9201'
           default: 'false'
           username: 'elastic'
           password: 'Woegh6'
-        - url: 'https://172.31.6.50:9202'
+        - url: 'https://172.31.13.209:9202'
           default: 'false'
           username: 'elastic'
           password: 'Woegh6'
-        - url: 'https://172.31.0.108:9200'
+        - url: 'https://172.31.13.209:9200'
           default: 'false'
           username: 'elastic'
           password: 'Woegh6'
-        - url: 'https://172.31.0.108:9201'
+        - url: 'https://172.31.13.209:9201'
           default: 'false'
           username: 'elastic'
           password: 'Woegh6'
-        - url: 'https://172.31.0.108:9202'
+        - url: 'https://172.31.13.209:9202'
           default: 'false'
           username: 'elastic'
           password: 'Woegh6'
