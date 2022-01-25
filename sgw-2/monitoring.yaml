@@ -1,0 +1,107 @@
+---
+- name: Monitoring Installer
+  gather_facts: true
+  hosts: monitoring
+  become: True
+  
+  vars:
+    network_name: monitoring
+    opster_assets_url: 'https://opster-rpms.s3.amazonaws.com/sgw'
+    opster_mclb_grafana_dashboard: 'SGW-Grafana-Dashboard.json'
+
+  tasks:
+          
+  - name: Installing Docker Service
+    ansible.builtin.include_role:
+      name: asbrl-docker
+      apply:
+        tags:
+          - docker
+    vars:
+      asbrl_docker_install_docker: True
+      asbrl_docker_install_certificates: False
+      asbrl_docker_install_registry: False
+      asbrl_docker_install_watchtower: False      
+    tags:
+      - docker
+
+  - name: Installing Docker Network
+    community.docker.docker_network:
+      name: "{{ network_name }}"
+      enable_ipv6: false
+      driver: bridge
+      ipam_driver: default
+      ipam_config:
+        - subnet: 172.16.237.0/24
+          gateway: 172.16.237.1
+    tags:
+      - docker 
+
+  - name: Installing Prometheus Service
+    ansible.builtin.include_role:
+      name: asbrl-prometheus
+      apply:                                        
+        tags:                                       
+          - prometheus
+    vars:
+      docker_networks:
+        - name: "{{ network_name }}"
+          aliases:
+            - "{{ container_name }}"
+      scrape_configs:
+        - job_name: prometheus
+          static_configs:
+            - targets: ['localhost:9090']
+        - job_name: mclb
+          honor_timestamps: true
+          scrape_interval: 15s
+          scrape_timeout: 10s
+          metrics_path: /metrics
+          scheme: http
+          static_configs:
+          - targets:
+            - 172.31.14.6:5555
+            - 172.31.2.79:5555
+
+    tags:                                           
+      - prometheus
+
+  - name: Downloading Opster Search Gateway Grafana Dashboard
+    ansible.builtin.get_url:
+      url: '{{ opster_assets_url }}/{{ opster_mclb_grafana_dashboard }}'
+      dest: '/tmp/{{ opster_mclb_grafana_dashboard }}'
+      mode: '0440'
+    tags:
+      - grafana
+
+  - name: Replacing with RegEx in Grafana Dashboard
+    ansible.builtin.replace:
+      path: '/tmp/{{ opster_mclb_grafana_dashboard }}'
+      regexp: '\$\{DS_PROMETHEUS\}'
+      replace: 'prometheus'
+    tags:
+      - grafana
+
+  - name: Deploy Grafana Service
+    ansible.builtin.include_role:
+      name: asbrl-grafana
+      apply:
+        tags:
+          - grafana
+    vars:
+      docker_networks:
+        - name: "{{ network_name }}"
+          aliases:
+            - "{{ container_name }}"
+      prometheus_url: 'http://prometheus:9090'
+      build: 'latest'
+      admin_pass: 'grafanus'
+      enable_auth_anonymous:
+        enabled: true
+      import_dashboards_path: '/tmp'
+      import_dashboards_file: '{{ opster_mclb_grafana_dashboard }}'
+      docker_published_ports:
+        - "80:3000"
+    tags:
+      - grafana
+

@@ -1,0 +1,80 @@
+---
+- name: SGW Installer
+  gather_facts: true
+  hosts: sgw 
+  become: True
+  
+  vars:
+    network_name: sgw
+
+  tasks:
+          
+  - name: Installing Docker Service
+    ansible.builtin.include_role:
+      name: asbrl-docker
+      apply:
+        tags:
+          - docker
+    vars:
+      asbrl_docker_install_docker: True
+      asbrl_docker_install_certificates: False
+      asbrl_docker_install_registry: False
+      asbrl_docker_install_watchtower: False      
+    tags:
+      - docker
+
+  - name: ElasticSearch Docker Network
+    community.docker.docker_network:
+      name: "{{ network_name }}"
+      enable_ipv6: false
+      driver: bridge
+      ipam_driver: default
+      ipam_config:
+        - subnet: 172.16.238.0/24
+          gateway: 172.16.238.1
+    tags:
+      - docker 
+
+  
+  - name: Deploy SGW Service
+    ansible.builtin.include_role:
+      name: opster_search_gateway
+      apply:
+        tags:
+          - sgw
+    vars:
+      deploy_using: 'docker'
+      
+      docker_published_ports:
+        - "0.0.0.0:9200:9200"
+        - "0.0.0.0:5555:5555"
+
+      es_logger_user: "elastic"
+      es_logger_pass: "Woegh6"
+      es_logger_force_auth: True
+
+      docker_networks:
+      - name: "{{ network_name }}"
+        aliases:
+        - "{{ docker_name }}"
+
+      opster_sgw_logger_url:
+        protocol: "https"
+        host: "172.31.1.48"
+        port: 9200 
+      
+      opster_sgw_backends:
+        - url: 'https://172.31.13.209:9200'
+          default: 'true'
+          username: 'elastic'
+          password: 'Woegh6'
+        - url: 'https://172.31.13.209:9201'
+          default: 'false'
+          username: 'elastic'
+          password: 'Woegh6'
+        - url: 'https://172.31.13.209:9202'
+          default: 'false'
+          username: 'elastic'
+          password: 'Woegh6'
+    tags:
+      - sgw
